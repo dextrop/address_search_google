@@ -2,10 +2,11 @@ import json
 import requests
 from os import path
 
-REQ_SAVE_FILE_NAME = "place_address_to_google_places.json"
+REQ_SAVE_FILE_NAME = path.realpath(__file__).replace("__init__.py", "place_address_to_google_places.json")
 
-class AddrToGooglePlaces():
-    def __init__(self):
+class SearchAddressGoogleAPI():
+    def __init__(self, key):
+        self.key = key
         if not path.exists(REQ_SAVE_FILE_NAME):
             self.previous_search_request = {}
             self.update_file_data()
@@ -22,17 +23,19 @@ class AddrToGooglePlaces():
         self.update_file_data()
 
     def search_google(self, addr):
+        if not self.key:
+            raise Exception("Google API Key is not found")
+
         formatted_addr = addr.replace(", ", "+").replace(",", "+")
         if formatted_addr not in self.previous_search_request:
             resp = requests.get(
-                "https://maps.googleapis.com/maps/api/geocode/json?address={}&key=AIzaSyBHRyhFuMKyjMdyiHQfiBuScnyOWGK2yks".format(
-                    formatted_addr))
-            self.previous_search_request[formatted_addr] = resp.json()
-            self.update_file_data()
-            print ("Made Google Request")
+                "https://maps.googleapis.com/maps/api/geocode/json?address={}&key={}".format(
+                    formatted_addr, self.key))
+            if (resp.json()["status"] == "REQUEST_DENIED"):
+                return resp.json()
+            else:
+                self.previous_search_request[formatted_addr] = resp.json()
+                self.update_file_data()
+                print("Made Google Request")
+
         return self.previous_search_request[formatted_addr]
-
-
-if __name__ == '__main__':
-    search_lib = AddrToGooglePlaces()
-    search_lib.search_google("3, 186A, Vivek Khand 3, Gomti Nagar, Lucknow, Uttar Pradesh, 226010")
